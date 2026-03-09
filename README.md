@@ -18,7 +18,7 @@ A small, smart command-line wrapper designed for batch submitting Gaussian 16 jo
 ## 🚀 Installation & Setup
 
 **Step 1: Download & Place** 
-Download or clone the `subg.py` script and place it in your preferred directory (e.g., `~/scripts`).
+Download or clone the `subg.py` script (git clone https://github.com/yilinlu80/subg.git) and place the `subg.py` it in your preferred directory (e.g., `~/scripts`).
 
 **Step 2: Add to PATH** 
 Make the script globally accessible by adding its directory to your `~/.bashrc` file: 
