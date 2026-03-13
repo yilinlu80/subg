@@ -1,33 +1,30 @@
-cat << 'EOF' > ~/subg
+cat << 'EOF' > ~/subg/subg
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # ==============================================================================
 # Script Name: subg (Gaussian 16 HPC Smart Submission Script)
 # Author:      Yilin Lu
-# Date:        03/06/2026
+# Date:        03/12/2026
 # Contact:     yilu@scripps.edu
 #
 # ------------------------------------------------------------------------------
 # README & INSTALLATION INSTRUCTIONS:
 #
-# Step 1: Place the 'subg.py' script in your preferred main directory.
+# Step 1: Clone the subg.py script (git clone https://github.com/yilinlu80/subg.git)
 #
-# Step 2: Add that specific directory to your system's PATH so the command 
-#         can be recognized globally. (add in ~/.bashrc)
-#         Example: export PATH="$HOME/:$PATH" 
-#         Or:      export PATH="/your/custom/path:$PATH"
+# Step 2: Add that directory to your system's PATH so the command can be recognized globally.
+#          (add in ~/.bashrc) Example: export PATH="$HOME/subg/:$PATH" 
 #
-# Step 3: Grant execution permissions to the script by running:
-#         chmod +x subg.py
+# Step 3: Grant execution permissions to the script by running: chmod +x subg.py
 #
-# Step 4: Run the script once (e.g., './subg.py' or 'python3 subg.py' or 'subg.py' ) to 
+# Step 4: Run the script once (e.g. './subg.py' or 'python3 subg.py' or 'subg.py' ) to 
 #         initialize the setup. This will automatically generate the final 
 #         'subg' executable file in the same directory.
 #
 # Step 5: Afterward, verify that the installation was successful and the 
 #         script is functioning properly by running:
-#         subg -h
+#         `subg -h`
 # ------------------------------------------------------------------------------
 #
 # DESCRIPTION: 
@@ -235,9 +232,12 @@ if __name__ == "__main__":
     main()
 EOF
 
-# Grant execution permissions to the newly generated script
-chmod +x ~/subg
-
 # Print a confirmation message indicating the update is complete
 echo "--> The SUBG executable has been updated."
+
+# Grant execution permissions to the newly generated script
+chmod +x ~/subg/subg
+
+
+
 
