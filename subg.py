@@ -3,9 +3,9 @@ cat << 'EOF' > ~/subg/subg
 # -*- coding: utf-8 -*-
 
 # ==============================================================================
-# Script Name: subg (Gaussian 16 HPC Smart Submission Script)
+# Script Name: subg V 0.3 (Gaussian 16 HPC Smart Submission Script)
 # Author:      Yilin Lu
-# Date:        03/12/2026
+# Date:        03/13/2026
 # Contact:     yilu@scripps.edu
 #
 # ------------------------------------------------------------------------------
@@ -16,9 +16,9 @@ cat << 'EOF' > ~/subg/subg
 # Step 2: Add that directory to your system's PATH so the command can be recognized globally.
 #          (add in ~/.bashrc) Example: export PATH="$HOME/subg/:$PATH" 
 #
-# Step 3: Grant execution permissions to the script by running: chmod +x subg.py
+# Step 3: Grant execution permissions to the script by running: `chmod +x subg.py`
 #
-# Step 4: Run the script once (e.g. './subg.py' or 'python3 subg.py' or 'subg.py' ) to 
+# Step 4: Run the script once (e.g. `./subg.py` or `python3 subg.py` or `subg.py`) to 
 #         initialize the setup. This will automatically generate the final 
 #         'subg' executable file in the same directory.
 #
@@ -42,31 +42,43 @@ import subprocess
 # Define the absolute path for storing the persistent email configuration
 CONFIG_FILE = os.path.expanduser("~/.subg_config")
 
-# Retrieve the saved email address from the configuration file if it exists
-def get_saved_email():
+# Retrieve the saved configurations from the file if it exists
+def get_config():
+    config = {"email": None, "mailtype": "c"}
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, 'r') as f:
-            return f.read().strip()
-    return None
+            lines = f.read().strip().splitlines()
+            for line in lines:
+                if "=" in line:
+                    k, v = line.split("=", 1)
+                    config[k.strip()] = v.strip()
+                elif "@" in line: # Fallback for old single-line email config
+                    config["email"] = line.strip()
+    return config
 
-# Save the provided email address to the configuration file for future use
-def save_email(email):
+# Save the configurations to the file
+def save_config(email, mailtype):
     with open(CONFIG_FILE, 'w') as f:
-        f.write(email)
+        f.write(f"email={email if email else ''}\n")
+        f.write(f"mailtype={mailtype}\n")
 
 def main():
 
-    # Fetch the currently saved email to display its status in the help menu
-    current_email = get_saved_email()
-    email_status = f"Saved Email: {current_email}" if current_email else "Saved Email: None (Optional: Set via -mail)"
+    # Fetch the currently saved configs
+    config = get_config()
+    current_email = config["email"]
+    current_mailtype = config["mailtype"]
+
+    email_status = f"Saved Email: {current_email}" if current_email else "Saved Email: None (Set via -mail)"
+    type_status = f"Default Type: {current_mailtype} (Set via -tmail)"
 
     # Define the visual layout and text for the boxed help menu description
     border = "-" * 60
     description_text = (
         f"{border}\n"
-        f"|   SUBG: GAUSSIAN 16 HPC SMART SUBMISSION SCRIPT V0.2    |\n"
+        f"|   SUBG: GAUSSIAN 16 HPC SMART SUBMISSION SCRIPT V 0.3    |\n"
         f"{border}\n"
-        f" {email_status}"
+        f" {email_status} | {type_status}"
     )
 
     # Initialize the argument parser with the custom boxed description
@@ -80,22 +92,40 @@ def main():
     parser.add_argument("-a", "--auto", action="store_true", help="Auto-submit .gjf files without .log or .out equivalents")
     parser.add_argument("-m", "--mem", type=int, default=None, help="Memory allocation in GB")
     parser.add_argument("-n", "--nproc", type=int, default=None, help="Number of CPU cores")
-    parser.add_argument("-t", "--time", type=int, default=72, help="Walltime in hours (default: 72)")
+    parser.add_argument("-t", "--time", type=int, default=72, help="Total calculation walltime in hours (default: 72)")
     parser.add_argument("-mail", "--email", type=str, default=None, help="Update saved email")
-    parser.add_argument("-tmail", "--mailtype", type=str, default="c", 
+    parser.add_argument("-tmail", "--mailtype", type=str, default=current_mailtype, 
                         choices=['a', 's', 'e', 'f', 'c'], 
-                        help="Notification trigger: (a)ll, (s)tart, (e)nd, (f)ail, (c)omplete/fail(default)")
+                        help="Email notification trigger: (a)ll, (s)tart, (e)nd, (f)ail, (c)omplete/fail(default)")
     
     args = parser.parse_args()
+    
+    # --- Adjustment: Logic detection for email and notification type ---
+    mailtype_provided = any(opt in sys.argv for opt in ["-tmail", "--mailtype"])
+    config_updated = False
 
-    # Handle the auto-scan logic if the '-a' or '--auto' flag is triggered
+    if args.email:
+        current_email = args.email
+        config_updated = True
+        print(f"--> Success: Email updated and saved as {current_email}")
+
+    if mailtype_provided:
+        current_mailtype = args.mailtype
+        config_updated = True
+        print(f"--> Success: Email notification trigger updated to '{current_mailtype}'")
+
+    if config_updated:
+        save_config(current_email, current_mailtype)
+        # Exit here if the goal was only to update the configuration
+        if not args.filenames and not args.auto:
+            sys.exit(0)
+
+    # --- Logical flow reorganization ---
     if args.auto:
         pending_files = []
         for f in os.listdir('.'):
             if f.endswith('.gjf'):
                 base_name = f[:-4]
-
-                # Add the file to the pending list if neither a .log nor an .out file exists for it
                 if not (os.path.exists(base_name + '.log') or os.path.exists(base_name + '.out')):
                     pending_files.append(f)
         
@@ -111,30 +141,20 @@ def main():
         if choice != 'y':
             print("--> Auto-submission cancelled.")
             sys.exit(0)
-            
         args.filenames = pending_files
 
-    # Exit the script and show the help menu if no filenames and no auto-flag are provided
+    # Adjustment: Only raise an error if not in auto mode and no filenames are provided
     elif not args.filenames:
-        parser.print_help()
-        print("\nError: You must specify filenames or use the -a/--auto flag.")
-        sys.exit(1)
-
-    # Determine which email address to use based on user input or saved configuration
-    email = None
-    if args.email:
-        save_email(args.email)
-        email = args.email
-        print(f"--> Success: Email updated and saved as {email}")
-    elif current_email:
-        email = current_email
-    else:
-        print("Note: No saved email address found.")
-        print("You can save your email next time using: subg [file] -mail your_email@scripps.edu")
+        if not config_updated: # Show help only if neither configuration was updated nor files provided
+            parser.print_help()
+            print("\nError: You must specify filenames or use the -a/--auto flag.")
+            sys.exit(1)
+        else:
+            sys.exit(0)
 
     # Map the single-character email triggers to the standard Slurm notification types
     mail_map = {'a': 'ALL', 's': 'BEGIN', 'e': 'END', 'f': 'FAIL', 'c': 'END,FAIL'}
-    slurm_mail_type = mail_map.get(args.mailtype, 'ALL')
+    slurm_mail_type = mail_map.get(current_mailtype, 'ALL')
 
     # Loop through all identified files to process and submit them sequentially
     for raw_filename in args.filenames:
@@ -178,8 +198,8 @@ def main():
         
         # Generate the specific Slurm email directives only if an email address is configured
         mail_directives = ""
-        if email:
-            mail_directives = f"#SBATCH --mail-user={email}\n#SBATCH --mail-type={slurm_mail_type}"
+        if current_email:
+            mail_directives = f"#SBATCH --mail-user={current_email}\n#SBATCH --mail-type={slurm_mail_type}"
 
         slurm_content = f"""#!/bin/bash
 #SBATCH --job-name={job_name}
@@ -237,7 +257,5 @@ echo "--> The SUBG executable has been updated."
 
 # Grant execution permissions to the newly generated script
 chmod +x ~/subg/subg
-
-
 
 
